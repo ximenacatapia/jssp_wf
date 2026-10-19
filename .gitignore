@@ -1,0 +1,78 @@
+# ==========================================
+# Compilación y Binarios de C++
+# ==========================================
+# Objetos y librerías compiladas
+*.o
+*.obj
+*.so
+*.so.*
+*.a
+*.lib
+*.dll
+*.dylib
+*.exe
+*.out
+*.app
+
+# Archivos de depuración (Debug symbols)
+*.pdb
+*.idb
+*.dSYM/
+*.suo
+*.user
+*.userosv
+*.sln.docstates
+*.ilk
+*.exp
+
+# ==========================================
+# Sistemas de Compilación (Build Systems)
+# ==========================================
+# CMake
+/build/
+/build-*/
+/out/
+/bin/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CMakeLists.txt.user
+Makefile
+
+# Ninja
+.ninja_deps
+.ninja_log
+
+# Meson / Ninja
+meson-logs/
+meson-private/
+
+# Autotools
+.deps/
+.libs/
+*.la
+
+# ==========================================
+# Dependencias de pruebas descargadas
+# ==========================================
+/tests/doctest/doctest.h
+
+# ==========================================
+# VS Code (Configuración del editor)
+# ==========================================
+.vscode/
+
+# Archivos temporales e historial local de VS Code
+.history/
+*.vsix
+
+# Visual Studio (si se abre la carpeta en VS)
+.vs/
+
+# ==========================================
+# Archivos del Sistema Operativo
+# ==========================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
