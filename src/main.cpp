@@ -10,6 +10,7 @@
 
 #include "instance.hpp"
 #include "solution.hpp"
+#include "schedule.hpp"
 
 int main(int argc, char **argv)
 {
@@ -32,15 +33,22 @@ int main(int argc, char **argv)
 
         std::cout << "== Solution representation (operation-based) ==\n";
 
+        // Print full permutations only for small instances
+        const bool small = inst.num_operations() <= 30;
+
         jssp::Solution id = jssp::Solution::identity(inst);
-        std::cout << "identity: " << id.to_string()
-                  << (id.is_valid() ? "   [valid]" : "   [INVALID]") << "\n";
+        if (small)
+            std::cout << "identity seq: " << id.to_string() << "\n";
+        std::cout << "identity makespan: " << jssp::makespan_of(inst, id)
+                  << "\n";
 
         std::random_device rd;
         std::mt19937 rng(rd());
         jssp::Solution rnd = jssp::Solution::random(inst, rng);
-        std::cout << "random:   " << rnd.to_string()
-                  << (rnd.is_valid() ? "   [valid]" : "   [INVALID]") << "\n";
+        if (small)
+            std::cout << "random seq:   " << rnd.to_string() << "\n";
+        std::cout << "random makespan:   " << jssp::makespan_of(inst, rnd)
+                  << "\n";
     }
     catch (const std::exception &e)
     {
