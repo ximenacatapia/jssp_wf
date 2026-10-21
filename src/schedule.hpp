@@ -6,7 +6,7 @@
 #include "instance.hpp"
 #include "solution.hpp"
 
-/*  Decoder: turn an operation-based permutation into an actual schedule. (permutation -> schedule -> makespan).*/
+/*  Decoder: turn an operation-based permutation into an actual schedule. (permutation ->, schedule -> makespan).*/
 namespace jssp
 {
 
