@@ -11,6 +11,7 @@
 #include "instance.hpp"
 #include "solution.hpp"
 #include "schedule.hpp"
+#include "cost.hpp"
 
 int main(int argc, char **argv)
 {
@@ -39,16 +40,16 @@ int main(int argc, char **argv)
         jssp::Solution id = jssp::Solution::identity(inst);
         if (small)
             std::cout << "identity seq: " << id.to_string() << "\n";
-        std::cout << "identity makespan: " << jssp::makespan_of(inst, id)
-                  << "\n";
+        std::cout << "identity: makespan=" << jssp::makespan_of(inst, id)
+                  << "  cost=" << jssp::cost(inst, id) << "\n";
 
         std::random_device rd;
         std::mt19937 rng(rd());
         jssp::Solution rnd = jssp::Solution::random(inst, rng);
         if (small)
             std::cout << "random seq:   " << rnd.to_string() << "\n";
-        std::cout << "random makespan:   " << jssp::makespan_of(inst, rnd)
-                  << "\n";
+        std::cout << "random:   makespan=" << jssp::makespan_of(inst, rnd)
+                  << "  cost=" << jssp::cost(inst, rnd) << "\n";
     }
     catch (const std::exception &e)
     {
