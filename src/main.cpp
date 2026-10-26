@@ -12,6 +12,7 @@
 #include "solution.hpp"
 #include "schedule.hpp"
 #include "cost.hpp"
+#include "heuristic/local_search.hpp"
 
 int main(int argc, char **argv)
 {
@@ -50,6 +51,26 @@ int main(int argc, char **argv)
             std::cout << "random seq:   " << rnd.to_string() << "\n";
         std::cout << "random:   makespan=" << jssp::makespan_of(inst, rnd)
                   << "  cost=" << jssp::cost(inst, rnd) << "\n";
+
+        // preview for local_search: slide the random solution downhill to a local
+        // optimum and report the improvement.
+        std::cout << "\n== Local search (gravity) ==\n";
+        jssp::LocalSearchParams p;
+        p.strategy = jssp::LocalSearchStrategy::FIRST_IMPROVEMENT;
+        p.sample_size = 200;
+
+        const auto t0 = std::chrono::steady_clock::now();
+        jssp::Solution local = jssp::local_search(inst, rnd, p, rng);
+        const auto t1 = std::chrono::steady_clock::now();
+        const double seconds =
+            std::chrono::duration<double>(t1 - t0).count();
+
+        // more of format ouput, may change later
+        std::cout << "iterations: " << 1 << "\n";
+        std::cout << "cost:       " << jssp::cost(inst, local) << "\n";
+        std::cout << "makespan:   " << jssp::makespan_of(inst, local)
+                  << " (nodes in cycle: 0)\n";
+        std::cout << "time:       " << seconds << " s\n";
     }
     catch (const std::exception &e)
     {
