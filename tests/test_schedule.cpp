@@ -91,7 +91,6 @@ TEST_CASE("makespan is never below the lower bound")
         Solution s = Solution::random(inst, rng);
         int mk = jssp::makespan_of(inst, s);
         CHECK(mk >= inst.lower_bound());
-        CHECK(mk <= inst.upper_bound());
     }
 }
 

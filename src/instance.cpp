@@ -18,7 +18,7 @@ namespace jssp
 
         Instance inst;
 
-        // fist line, read line by line to skip blank lines and comments (#).
+        // fist line, read line by line to skip blank lines and comments.
         std::string line;
         auto next_data_line = [&](std::string &out) -> bool
         {
@@ -143,11 +143,27 @@ namespace jssp
 
     void Instance::compute_bounds()
     {
-        // Upper bound: process everything serially = sum of all durations.
+        // upper bound
+        std::vector<long long> job_time(n_, 0);
+        std::vector<long long> machine_time(m_, 0);
+
+        for (int pos = 0; pos < m_; ++pos)
+        { // for each operation layer
+            for (int j = 0; j < n_; ++j)
+            { // for each job
+                const Operation &op = jobs_[j][pos];
+                long long start =
+                    std::max(job_time[j], machine_time[op.machine]);
+                long long finish = start + op.duration;
+                job_time[j] = finish;
+                machine_time[op.machine] = finish;
+            }
+        }
+
         upper_bound_ = 0;
-        for (const auto &op : ops_)
+        for (int j = 0; j < n_; ++j)
         {
-            upper_bound_ += op.duration;
+            upper_bound_ = std::max(upper_bound_, job_time[j]);
         }
 
         // maxJobs: the job with the largest total duration.

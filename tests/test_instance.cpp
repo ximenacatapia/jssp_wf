@@ -9,14 +9,16 @@
 
 using jssp::Instance;
 
-// The 3x3 example from the project document.
+// The 3x3 example from the project pdf, built in memory.
 //
-// job 0: m0(3) m1(3) m2(3)
-// job 1: m0(2) m2(3) m1(4)
-// job 2: m1(3) m0(2) m2(1)
+//   job 0: m0(3) m1(3) m2(3)
+//   job 1: m0(2) m2(3) m1(4)
+//   job 2: m1(3) m0(2) m2(1)
 //
-// Expected bounds (per the document's definitions):
-//   upper bound = sum of all durations = 3+3+3 + 2+3+4 + 2+3+1 = 24
+// Expected bounds (per the pdf's definitions):
+//   upper bound (CotaSuperior, layered schedule): placing op 0 of every job,
+//       then op 1 of every job, then op 2, each as early as possible, gives
+//       finish times [9, 12, 10] -> upper bound = 12.
 //   lower bound = max(maxJobs, maxMachines)
 //       maxJobs     = max(9, 9, 6)            = 9
 //       maxMachines : m0 = 3+2+2 = 7
@@ -30,7 +32,7 @@ static Instance make_ft03()
         {{0, 2}, {2, 3}, {1, 4}},
         {{1, 3}, {0, 2}, {2, 1}},
     };
-    return Instance::from_data(/*num_machines=*/3, jobs);
+    return Instance::from_data(3, jobs);
 }
 
 TEST_CASE("instance dimensions are read correctly")
@@ -45,7 +47,7 @@ TEST_CASE("operations keep machine, duration and precedence order")
 {
     Instance inst = make_ft03();
 
-    // job 1 should be: m0(2) m2(3) m1(4), inorder.
+    // job 1 should be: m0(2) m2(3) m1(4), in that order.
     const auto &j1 = inst.job(1);
     REQUIRE(j1.size() == 3);
 
@@ -61,15 +63,14 @@ TEST_CASE("operations keep machine, duration and precedence order")
     CHECK(j1[2].duration == 4);
     CHECK(j1[2].position == 2);
 
-    // Convenience accessors must agree with the stored operations.
     CHECK(inst.machine(2, 0) == 1);
     CHECK(inst.duration(2, 0) == 3);
 }
 
-TEST_CASE("upper bound is the sum of all durations")
+TEST_CASE("upper bound is the makespan of the layered schedule")
 {
     Instance inst = make_ft03();
-    CHECK(inst.upper_bound() == 24);
+    CHECK(inst.upper_bound() == 12);
 }
 
 TEST_CASE("lower bound is max(maxJobs, maxMachines)")
@@ -80,25 +81,24 @@ TEST_CASE("lower bound is max(maxJobs, maxMachines)")
 
 TEST_CASE("a single-machine instance has coincident bounds")
 {
-    // everything is forced to run serially, so the schedule length is fixed.
-    // maxMachines = total load = upper bound.
-    //   job 0: m0(5)
-    //   job 1: m0(7)
+    // One machine, two jobs: everything is forced to run serially, so the
+    // schedule length is fixed.
     std::vector<std::vector<std::pair<int, int>>> jobs = {
         {{0, 5}},
         {{0, 7}},
     };
     Instance inst = Instance::from_data(1, jobs);
 
-    CHECK(inst.upper_bound() == 12); // 5 + 7
+    CHECK(inst.upper_bound() == 12);
     CHECK(inst.lower_bound() == 12); // maxMachines = 12 dominates maxJobs = 7
 }
 
 TEST_CASE("from_data rejects an out-of-range machine")
 {
     std::vector<std::vector<std::pair<int, int>>> jobs = {
-        {{5, 3}}, // machine 5 does not exist when num_machines = 2
+        {{5, 3}},
     };
+
     auto build = [&]
     { return Instance::from_data(2, jobs); };
     CHECK_THROWS_AS(build(), std::runtime_error);
