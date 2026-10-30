@@ -35,6 +35,25 @@ namespace
         return name;
     }
 
+    // True iff a file exists at 'path'.
+    bool file_exists(const std::string &path)
+    {
+        struct stat st;
+        return stat(path.c_str(), &st) == 0;
+    }
+
+    // so the files don't overwrite eachother
+    std::string next_solution_path(const std::string &stem)
+    {
+        for (int i = 1;; ++i)
+        {
+            std::string candidate =
+                "results/" + stem + "-" + std::to_string(i) + ".sol.txt";
+            if (!file_exists(candidate))
+                return candidate;
+        }
+    }
+
 }
 
 int main(int argc, char **argv)
@@ -94,7 +113,7 @@ int main(int argc, char **argv)
         // Write the solution file (machine-chain format)
         mkdir("results", 0755);
         const std::string sol_path =
-            "results/" + stem_of(instance_path) + ".sol.txt";
+            next_solution_path(stem_of(instance_path));
         jssp::write_solution(inst, r.best, sol_path);
         std::cout << "\nsolution written to " << sol_path << "\n";
     }

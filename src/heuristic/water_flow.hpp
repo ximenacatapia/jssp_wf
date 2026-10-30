@@ -27,10 +27,10 @@ namespace jssp
 
     struct WaterFlowParams
     {
-        int max_clouds = 20;      // main iterations/clouds
-        int rain_drops = 15;      // random solutions generated per exploration
-        int erode_top = 5;        // how many best valleys to erode per cloud
-        int erosion_attempts = 3; // intensification rounds before a valley is spent
+        int max_clouds = 500;       // main iterations/clouds
+        int rain_drops = 100;       // random solutions generated per exploration
+        int erode_top = 70;         // how many best valleys to erode per cloud
+        int erosion_attempts = 100; // intensification rounds before a valley is spent
 
         // Local search used for the gravity phase
         LocalSearchParams gravity;
