@@ -19,6 +19,7 @@
 #include "heuristic/local_search.hpp"
 #include "heuristic/water_flow.hpp"
 #include "solution_writer.hpp"
+#include "solution_checker.hpp"
 
 namespace
 {
@@ -54,13 +55,39 @@ namespace
         }
     }
 
+    // Reads a "--key value" flag from the arguments
+    long long flag(int argc, char **argv, const std::string &key,
+                   long long fallback)
+    {
+        for (int i = 2; i + 1 < argc; ++i)
+        {
+            if (argv[i] == key)
+                return std::stoll(argv[i + 1]);
+        }
+        return fallback;
+    }
+
+    // Reads a "--key value" string flag. Returns "" if absent.
+    std::string str_flag(int argc, char **argv, const std::string &key)
+    {
+        for (int i = 2; i + 1 < argc; ++i)
+        {
+            if (argv[i] == key)
+                return argv[i + 1];
+        }
+        return "";
+    }
+
 }
 
 int main(int argc, char **argv)
 {
     if (argc < 2)
     {
-        std::cerr << "Usage: " << argv[0] << " <instance_path>\n";
+        std::cerr << "Usage: " << argv[0] << " <instance_path>"
+                  << " [--seed S] [--clouds C] [--drops D] [--erode-top T]"
+                  << " [--erode-attempts A] [--gravity-sample G]"
+                  << " [--erosion-sample E]\n";
         return 1;
     }
 
@@ -69,12 +96,33 @@ int main(int argc, char **argv)
         const std::string instance_path = argv[1];
         jssp::Instance inst = jssp::Instance::from_file(instance_path);
 
-        // Seed: from the command line if given, otherwise from the system
-        std::mt19937::result_type seed;
-        if (argc >= 3)
+        // Check mode -----------
+        const std::string check_path = str_flag(argc, argv, "--check");
+        if (!check_path.empty())
         {
-            seed = static_cast<std::mt19937::result_type>(
-                std::stoul(argv[2]));
+            jssp::CheckResult cr =
+                jssp::check_solution_file(inst, check_path);
+
+            std::cout << "== Check: " << check_path << " ==\n";
+            std::cout << "operations read: " << cr.operations
+                      << " (instance has " << inst.num_operations() << ")\n";
+            std::cout << "feasible:        "
+                      << (cr.feasible ? "yes" : "NO") << "\n";
+            if (cr.feasible)
+            {
+                std::cout << "makespan:        " << cr.makespan << "\n";
+                std::cout << "lower bound:     " << inst.lower_bound() << "\n";
+                std::cout << "upper bound:     " << inst.upper_bound() << "\n";
+            }
+            std::cout << "detail:          " << cr.message << "\n";
+            return cr.feasible ? 0 : 1;
+        }
+
+        // Seed: from the command line if given --seed, otherwise from the system
+        std::mt19937::result_type seed;
+        if (long long s = flag(argc, argv, "--seed", -1); s >= 0)
+        {
+            seed = static_cast<std::mt19937::result_type>(s);
         }
         else
         {
@@ -91,8 +139,21 @@ int main(int argc, char **argv)
         std::cout << "upper bound:  " << inst.upper_bound() << "\n";
         std::cout << "seed:         " << seed << "\n\n";
 
-        // Run the Water-Flow algorithm
-        jssp::WaterFlowParams params; // default parameters
+        // Run the Water-Flow algorithm, we can re-write any parameter on command line
+        // oherwise taken as default
+        jssp::WaterFlowParams params;
+        params.max_clouds =
+            static_cast<int>(flag(argc, argv, "--clouds", params.max_clouds));
+        params.rain_drops =
+            static_cast<int>(flag(argc, argv, "--drops", params.rain_drops));
+        params.erode_top =
+            static_cast<int>(flag(argc, argv, "--erode-top", params.erode_top));
+        params.erosion_attempts = static_cast<int>(
+            flag(argc, argv, "--erode-attempts", params.erosion_attempts));
+        params.gravity.sample_size = static_cast<int>(flag(
+            argc, argv, "--gravity-sample", params.gravity.sample_size));
+        params.erosion.sample_size = static_cast<int>(flag(
+            argc, argv, "--erosion-sample", params.erosion.sample_size));
 
         const auto t0 = std::chrono::steady_clock::now();
         jssp::WaterFlowResult r = jssp::water_flow(inst, params, rng);
