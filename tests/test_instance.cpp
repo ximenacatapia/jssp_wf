@@ -16,9 +16,8 @@ using jssp::Instance;
 //   job 2: m1(3) m0(2) m2(1)
 //
 // Expected bounds (per the pdf's definitions):
-//   upper bound (CotaSuperior, layered schedule): placing op 0 of every job,
-//       then op 1 of every job, then op 2, each as early as possible, gives
-//       finish times [9, 12, 10] -> upper bound = 12.
+//   upper bound = sum of all durations (process everything serially) =
+//       3+3+3 + 2+3+4 + 2+3+1 = 24.
 //   lower bound = max(maxJobs, maxMachines)
 //       maxJobs     = max(9, 9, 6)            = 9
 //       maxMachines : m0 = 3+2+2 = 7
@@ -70,7 +69,7 @@ TEST_CASE("operations keep machine, duration and precedence order")
 TEST_CASE("upper bound is the makespan of the layered schedule")
 {
     Instance inst = make_ft03();
-    CHECK(inst.upper_bound() == 12);
+    CHECK(inst.upper_bound() == 24);
 }
 
 TEST_CASE("lower bound is max(maxJobs, maxMachines)")

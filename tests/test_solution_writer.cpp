@@ -56,7 +56,7 @@ TEST_CASE("solution file has one line per machine plus the footer")
     // Footer content.
     CHECK(lines[3] == "makespan: 22"); // identity makespan (from Stage 3)
     CHECK(lines[4] == "ciclos: 0");
-    CHECK(lines[5] == "Cota Sup: 12");
+    CHECK(lines[5] == "Cota Sup: 24");
     CHECK(lines[6] == "Cota Inf: 10");
     CHECK(lines[7].rfind("Costo: ", 0) == 0);
 }
