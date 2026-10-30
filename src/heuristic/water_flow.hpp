@@ -56,7 +56,13 @@ namespace jssp
         int makespan;
         double cost;
         int iterations;
+        int nodes_in_cycle;
     };
+
+    inline bool is_feasible(const WaterFlowResult &r)
+    {
+        return r.nodes_in_cycle == 0;
+    }
 
     // Runs the Water-Flow algorithm and returns the best solution found.
     WaterFlowResult water_flow(const Instance &inst,

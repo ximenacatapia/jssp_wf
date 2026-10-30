@@ -160,10 +160,12 @@ namespace jssp
             }
         }
 
+        // Upper bound: the sum of ALL durations (process every operation
+        // serially, one by one)
         upper_bound_ = 0;
-        for (int j = 0; j < n_; ++j)
+        for (const auto &op : ops_)
         {
-            upper_bound_ = std::max(upper_bound_, job_time[j]);
+            upper_bound_ += op.duration;
         }
 
         // maxJobs: the job with the largest total duration.

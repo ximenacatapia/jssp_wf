@@ -115,7 +115,7 @@ namespace jssp
 
         // Build the result with the best solution directly
         return WaterFlowResult{best, makespan_of(inst, best), best_cost,
-                               clouds_run};
+                               clouds_run, 0};
     }
 
 } // namespace jssp

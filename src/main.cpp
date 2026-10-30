@@ -7,12 +7,35 @@
 // Usage: ./jssp-wfa <instance_path>
 #include <iostream>
 #include <random>
+#include <string>
+#include <cstdint>
+#include <chrono>
+#include <sys/stat.h>
 
 #include "instance.hpp"
 #include "solution.hpp"
 #include "schedule.hpp"
 #include "cost.hpp"
 #include "heuristic/local_search.hpp"
+#include "heuristic/water_flow.hpp"
+#include "solution_writer.hpp"
+
+namespace
+{
+
+    // Returns the file name without directory or extension.
+    std::string stem_of(const std::string &path)
+    {
+        size_t slash = path.find_last_of("/\\");
+        std::string name = (slash == std::string::npos) ? path
+                                                        : path.substr(slash + 1);
+        size_t dot = name.find_last_of('.');
+        if (dot != std::string::npos)
+            name = name.substr(0, dot);
+        return name;
+    }
+
+}
 
 int main(int argc, char **argv)
 {
@@ -24,53 +47,56 @@ int main(int argc, char **argv)
 
     try
     {
-        jssp::Instance inst = jssp::Instance::from_file(argv[1]);
+        const std::string instance_path = argv[1];
+        jssp::Instance inst = jssp::Instance::from_file(instance_path);
+
+        // Seed: from the command line if given, otherwise from the system
+        std::mt19937::result_type seed;
+        if (argc >= 3)
+        {
+            seed = static_cast<std::mt19937::result_type>(
+                std::stoul(argv[2]));
+        }
+        else
+        {
+            std::random_device rd;
+            seed = rd();
+        }
+        std::mt19937 rng(seed);
 
         std::cout << "== Instance ==\n";
         std::cout << "jobs (n):     " << inst.num_jobs() << "\n";
         std::cout << "machines (m): " << inst.num_machines() << "\n";
         std::cout << "operations:   " << inst.num_operations() << "\n";
         std::cout << "lower bound:  " << inst.lower_bound() << "\n";
-        std::cout << "upper bound:  " << inst.upper_bound() << "\n\n";
+        std::cout << "upper bound:  " << inst.upper_bound() << "\n";
+        std::cout << "seed:         " << seed << "\n\n";
 
-        std::cout << "== Solution representation (operation-based) ==\n";
-
-        // Print full permutations only for small instances
-        const bool small = inst.num_operations() <= 30;
-
-        jssp::Solution id = jssp::Solution::identity(inst);
-        if (small)
-            std::cout << "identity seq: " << id.to_string() << "\n";
-        std::cout << "identity: makespan=" << jssp::makespan_of(inst, id)
-                  << "  cost=" << jssp::cost(inst, id) << "\n";
-
-        std::random_device rd;
-        std::mt19937 rng(rd());
-        jssp::Solution rnd = jssp::Solution::random(inst, rng);
-        if (small)
-            std::cout << "random seq:   " << rnd.to_string() << "\n";
-        std::cout << "random:   makespan=" << jssp::makespan_of(inst, rnd)
-                  << "  cost=" << jssp::cost(inst, rnd) << "\n";
-
-        // preview for local_search: slide the random solution downhill to a local
-        // optimum and report the improvement.
-        std::cout << "\n== Local search (gravity) ==\n";
-        jssp::LocalSearchParams p;
-        p.strategy = jssp::LocalSearchStrategy::FIRST_IMPROVEMENT;
-        p.sample_size = 200;
+        // Run the Water-Flow algorithm
+        jssp::WaterFlowParams params; // default parameters
 
         const auto t0 = std::chrono::steady_clock::now();
-        jssp::Solution local = jssp::local_search(inst, rnd, p, rng);
+        jssp::WaterFlowResult r = jssp::water_flow(inst, params, rng);
         const auto t1 = std::chrono::steady_clock::now();
-        const double seconds =
-            std::chrono::duration<double>(t1 - t0).count();
+        const double seconds = std::chrono::duration<double>(t1 - t0).count();
 
-        // more of format ouput, may change later
-        std::cout << "iterations: " << 1 << "\n";
-        std::cout << "cost:       " << jssp::cost(inst, local) << "\n";
-        std::cout << "makespan:   " << jssp::makespan_of(inst, local)
-                  << " (nodes in cycle: 0)\n";
+        const bool feasible = jssp::is_feasible(r);
+
+        // report format
+        std::cout << "== Water-Flow result ==\n";
+        std::cout << "feasible:   " << (feasible ? "yes" : "NO") << "\n";
+        std::cout << "iterations: " << r.iterations << "\n";
+        std::cout << "cost:       " << r.cost << "\n";
+        std::cout << "makespan:   " << r.makespan
+                  << " (nodes in cycle: " << r.nodes_in_cycle << ")\n";
         std::cout << "time:       " << seconds << " s\n";
+
+        // Write the solution file (machine-chain format)
+        mkdir("results", 0755);
+        const std::string sol_path =
+            "results/" + stem_of(instance_path) + ".sol.txt";
+        jssp::write_solution(inst, r.best, sol_path);
+        std::cout << "\nsolution written to " << sol_path << "\n";
     }
     catch (const std::exception &e)
     {
