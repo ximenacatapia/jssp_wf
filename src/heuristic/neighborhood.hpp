@@ -5,7 +5,7 @@
 #include <utility>
 #include <vector>
 
-#include "../solution.hpp"
+#include "../model/solution.hpp"
 
 // ============================================================================
 //  Neighborhood operator: swap of two positions (adapted 2-opt).

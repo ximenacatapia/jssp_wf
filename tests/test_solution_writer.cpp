@@ -9,9 +9,9 @@
 #include <utility>
 #include <vector>
 
-#include "../src/instance.hpp"
-#include "../src/solution.hpp"
-#include "../src/solution_writer.hpp"
+#include "../src/model/instance.hpp"
+#include "../src/model/solution.hpp"
+#include "../src/io/solution_writer.hpp"
 
 using jssp::Instance;
 using jssp::Solution;

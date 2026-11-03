@@ -3,8 +3,8 @@
 
 #include <random>
 
-#include "../instance.hpp"
-#include "../solution.hpp"
+#include "../model/instance.hpp"
+#include "../model/solution.hpp"
 
 /*
 Local search: the "gravity" / hill-sliding phase of the Water-Flow.

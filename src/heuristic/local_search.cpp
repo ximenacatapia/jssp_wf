@@ -1,6 +1,6 @@
 #include "local_search.hpp"
 
-#include "../cost.hpp"
+#include "../eval/cost.hpp"
 #include "neighborhood.hpp"
 
 namespace jssp

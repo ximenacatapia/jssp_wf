@@ -4,9 +4,9 @@
 #include <utility>
 #include <vector>
 
-#include "../src/cost.hpp"
-#include "../src/instance.hpp"
-#include "../src/solution.hpp"
+#include "../src/eval/cost.hpp"
+#include "../src/model/instance.hpp"
+#include "../src/model/solution.hpp"
 
 using jssp::Instance;
 using jssp::Solution;

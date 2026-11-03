@@ -1,8 +1,8 @@
 #ifndef JSSP_COST_HPP
 #define JSSP_COST_HPP
 
-#include "instance.hpp"
-#include "solution.hpp"
+#include "../model/instance.hpp"
+#include "../model/solution.hpp"
 
 //  Cost function: the normalized objective from the JSSP class paper.
 //      f(X) = (makespan(X) - lowerBound) / (upperBound - lowerBound)

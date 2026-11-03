@@ -6,9 +6,9 @@
 #include <utility>
 #include <vector>
 
-#include "../src/instance.hpp"
-#include "../src/schedule.hpp"
-#include "../src/solution.hpp"
+#include "../src/model/instance.hpp"
+#include "../src/model/solution.hpp"
+#include "../src/eval/schedule.hpp"
 
 using jssp::Instance;
 using jssp::Schedule;

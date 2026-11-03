@@ -3,8 +3,8 @@
 
 #include <random>
 
-#include "../instance.hpp"
-#include "../solution.hpp"
+#include "../model/instance.hpp"
+#include "../model/solution.hpp"
 #include "local_search.hpp"
 
 /*
@@ -27,10 +27,10 @@ namespace jssp
 
     struct WaterFlowParams
     {
-        int max_clouds = 500;       // main iterations/clouds
-        int rain_drops = 100;       // random solutions generated per exploration
-        int erode_top = 70;         // how many best valleys to erode per cloud
-        int erosion_attempts = 100; // intensification rounds before a valley is spent
+        int max_clouds = 50000;       // main iterations/clouds
+        int rain_drops = 20000;       // random solutions generated per exploration
+        int erode_top = 15000;        // how many best valleys to erode per cloud
+        int erosion_attempts = 20000; // intensification rounds before a valley is spent
 
         // Local search used for the gravity phase
         LocalSearchParams gravity;

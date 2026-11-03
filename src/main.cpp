@@ -12,14 +12,14 @@
 #include <chrono>
 #include <sys/stat.h>
 
-#include "instance.hpp"
-#include "solution.hpp"
-#include "schedule.hpp"
-#include "cost.hpp"
+#include "model/instance.hpp"
+#include "model/solution.hpp"
+#include "eval/schedule.hpp"
+#include "eval/cost.hpp"
 #include "heuristic/local_search.hpp"
 #include "heuristic/water_flow.hpp"
-#include "solution_writer.hpp"
-#include "solution_checker.hpp"
+#include "io/solution_writer.hpp"
+#include "io/solution_checker.hpp"
 
 namespace
 {

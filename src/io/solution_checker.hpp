@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include "instance.hpp"
+#include "../model/instance.hpp"
 
 //  Solution checker: load a solution file (machine-chain format) and evaluate
 //  it against an instance with THIS program's decoder.

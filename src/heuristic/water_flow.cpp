@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <vector>
 
-#include "../cost.hpp"
-#include "../schedule.hpp"
+#include "../eval/cost.hpp"
+#include "../eval/schedule.hpp"
 
 namespace jssp
 {

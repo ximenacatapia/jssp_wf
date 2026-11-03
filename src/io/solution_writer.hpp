@@ -3,8 +3,8 @@
 
 #include <string>
 
-#include "instance.hpp"
-#include "solution.hpp"
+#include "../model/instance.hpp"
+#include "../model/solution.hpp"
 
 namespace jssp
 {

@@ -3,8 +3,8 @@
 
 #include <vector>
 
-#include "instance.hpp"
-#include "solution.hpp"
+#include "../model/instance.hpp"
+#include "../model/solution.hpp"
 
 /*  Decoder: turn an operation-based permutation into an actual schedule. (permutation ->, schedule -> makespan).*/
 namespace jssp

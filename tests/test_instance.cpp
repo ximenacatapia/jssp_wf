@@ -5,7 +5,7 @@
 #include <utility>
 #include <vector>
 
-#include "../src/instance.hpp"
+#include "../src/model/instance.hpp"
 
 using jssp::Instance;
 
