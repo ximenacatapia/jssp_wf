@@ -32,7 +32,7 @@ namespace jssp
         return MachineChain(inst, std::move(order));
     }
 
-    MachineChain MachineChain::random_infeasible(const Instance &inst, std::mt19937 &rng)
+    MachineChain MachineChain::random_nonfeasible(const Instance &inst, std::mt19937 &rng)
     {
         const int n = inst.num_jobs();
         const int m = inst.num_machines();

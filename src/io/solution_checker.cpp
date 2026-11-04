@@ -150,7 +150,7 @@ namespace jssp
             r.feasible = false;
             r.message = "Deadlock: " + std::to_string(total - scheduled) +
                         " operations could not be scheduled (the solution has a "
-                        "cycle / is infeasible).";
+                        "cycle / is non-feasible).";
             return r;
         }
 

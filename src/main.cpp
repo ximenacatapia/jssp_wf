@@ -11,12 +11,16 @@
 #include <cstdint>
 #include <chrono>
 #include <sys/stat.h>
+#include <fstream>
 
 #include "model/instance.hpp"
 #include "model/solution.hpp"
+#include "model/machine_chain.hpp"
 #include "eval/schedule.hpp"
 #include "eval/cost.hpp"
-#include "heuristic/local_search.hpp"
+#include "eval/chain_cost.hpp"
+#include "heuristic/repr_permutation.hpp"
+#include "heuristic/repr_chain.hpp"
 #include "heuristic/water_flow.hpp"
 #include "io/solution_writer.hpp"
 #include "io/solution_checker.hpp"
@@ -78,6 +82,56 @@ namespace
         return "";
     }
 
+    // Writing the solution file
+    void write_result_file(const jssp::Instance &inst,
+                           const jssp::Solution &best,
+                           const std::string &path)
+    {
+        jssp::write_solution(inst, best, path);
+    }
+
+    void write_result_file(const jssp::Instance &inst,
+                           const jssp::MachineChain &best,
+                           const std::string &path)
+    {
+        std::ofstream out(path);
+        out << best.to_string();
+        jssp::ChainEvaluation ev = best.evaluate();
+        out << "makespan: " << ev.makespan << "\n";
+        out << "ciclos: " << ev.nodes_in_cycle << "\n";
+        out << "Cota Sup: " << inst.upper_bound() << "\n";
+        out << "Cota Inf: " << inst.lower_bound() << "\n";
+        out << "Costo: " << jssp::chain_cost(inst, best) << "\n";
+    }
+
+    // Run + report + write  (generic over the representation)
+    template <class Repr>
+    int run_and_report(const jssp::Instance &inst,
+                       const jssp::WaterFlowParams &params,
+                       std::mt19937 &rng,
+                       const std::string &instance_path)
+    {
+        const auto t0 = std::chrono::steady_clock::now();
+        jssp::WaterFlowResult<Repr> r = jssp::water_flow<Repr>(inst, params, rng);
+        const auto t1 = std::chrono::steady_clock::now();
+        const double seconds = std::chrono::duration<double>(t1 - t0).count();
+
+        std::cout << "== Water-Flow result ==\n";
+        std::cout << "feasible:   " << (jssp::is_feasible(r) ? "YES" : "NO")
+                  << "\n";
+        std::cout << "iterations: " << r.iterations << "\n";
+        std::cout << "cost:       " << r.cost << "\n";
+        std::cout << "makespan:   " << r.makespan
+                  << " (nodes in cycle: " << r.nodes_in_cycle << ")\n";
+        std::cout << "time:       " << seconds << " s\n";
+
+        mkdir("results", 0755);
+        const std::string sol_path = next_solution_path(stem_of(instance_path));
+        write_result_file(inst, r.best, sol_path);
+        std::cout << "\nsolution written to " << sol_path << "\n";
+        return 0;
+    }
+
 }
 
 int main(int argc, char **argv)
@@ -85,9 +139,10 @@ int main(int argc, char **argv)
     if (argc < 2)
     {
         std::cerr << "Usage: " << argv[0] << " <instance_path>"
+                  << " [--repr permutation|chain] [--start feasible|non-feasible]"
                   << " [--seed S] [--clouds C] [--drops D] [--erode-top T]"
                   << " [--erode-attempts A] [--gravity-sample G]"
-                  << " [--erosion-sample E]\n";
+                  << " [--erosion-sample E] [--check FILE]\n";
         return 1;
     }
 
@@ -131,16 +186,7 @@ int main(int argc, char **argv)
         }
         std::mt19937 rng(seed);
 
-        std::cout << "== Instance ==\n";
-        std::cout << "jobs (n):     " << inst.num_jobs() << "\n";
-        std::cout << "machines (m): " << inst.num_machines() << "\n";
-        std::cout << "operations:   " << inst.num_operations() << "\n";
-        std::cout << "lower bound:  " << inst.lower_bound() << "\n";
-        std::cout << "upper bound:  " << inst.upper_bound() << "\n";
-        std::cout << "seed:         " << seed << "\n\n";
-
-        // Run the Water-Flow algorithm, we can re-write any parameter on command line
-        // oherwise taken as default
+        // Parameters -------
         jssp::WaterFlowParams params;
         params.max_clouds =
             static_cast<int>(flag(argc, argv, "--clouds", params.max_clouds));
@@ -150,33 +196,43 @@ int main(int argc, char **argv)
             static_cast<int>(flag(argc, argv, "--erode-top", params.erode_top));
         params.erosion_attempts = static_cast<int>(
             flag(argc, argv, "--erode-attempts", params.erosion_attempts));
-        params.gravity.sample_size = static_cast<int>(flag(
-            argc, argv, "--gravity-sample", params.gravity.sample_size));
-        params.erosion.sample_size = static_cast<int>(flag(
-            argc, argv, "--erosion-sample", params.erosion.sample_size));
+        params.gravity.sample_size = static_cast<int>(
+            flag(argc, argv, "--gravity-sample", params.gravity.sample_size));
+        params.erosion.sample_size = static_cast<int>(
+            flag(argc, argv, "--erosion-sample", params.erosion.sample_size));
 
-        const auto t0 = std::chrono::steady_clock::now();
-        jssp::WaterFlowResult r = jssp::water_flow(inst, params, rng);
-        const auto t1 = std::chrono::steady_clock::now();
-        const double seconds = std::chrono::duration<double>(t1 - t0).count();
+        // Start mode (for the chain representation).
+        std::string start = str_flag(argc, argv, "--start");
+        if (start == "feasible")
+            params.start = jssp::StartMode::FEASIBLE;
+        else
+            params.start = jssp::StartMode::NONFEASIBLE; // default
 
-        const bool feasible = jssp::is_feasible(r);
+        std::cout << "== Instance ==\n";
+        std::cout << "jobs (n):     " << inst.num_jobs() << "\n";
+        std::cout << "machines (m): " << inst.num_machines() << "\n";
+        std::cout << "operations:   " << inst.num_operations() << "\n";
+        std::cout << "lower bound:  " << inst.lower_bound() << "\n";
+        std::cout << "upper bound:  " << inst.upper_bound() << "\n";
+        std::cout << "seed:         " << seed << "\n\n";
 
-        // report format
-        std::cout << "== Water-Flow result ==\n";
-        std::cout << "feasible:   " << (feasible ? "yes" : "NO") << "\n";
-        std::cout << "iterations: " << r.iterations << "\n";
-        std::cout << "cost:       " << r.cost << "\n";
-        std::cout << "makespan:   " << r.makespan
-                  << " (nodes in cycle: " << r.nodes_in_cycle << ")\n";
-        std::cout << "time:       " << seconds << " s\n";
-
-        // Write the solution file (machine-chain format)
-        mkdir("results", 0755);
-        const std::string sol_path =
-            next_solution_path(stem_of(instance_path));
-        jssp::write_solution(inst, r.best, sol_path);
-        std::cout << "\nsolution written to " << sol_path << "\n";
+        // Representation --------
+        std::string repr = str_flag(argc, argv, "--repr");
+        if (repr == "permutation")
+        {
+            std::cout << "repr:         permutation\n\n";
+            return run_and_report<jssp::Solution>(inst, params, rng, instance_path);
+        }
+        else
+        {
+            std::cout << "repr:         machine chain ("
+                      << (params.start == jssp::StartMode::NONFEASIBLE
+                              ? "non-feasible"
+                              : "feasible")
+                      << ")\n\n";
+            return run_and_report<jssp::MachineChain>(inst, params, rng,
+                                                      instance_path);
+        }
     }
     catch (const std::exception &e)
     {

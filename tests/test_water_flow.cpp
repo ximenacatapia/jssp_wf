@@ -9,6 +9,7 @@
 #include "../src/eval/cost.hpp"
 #include "../src/eval/schedule.hpp"
 #include "../src/heuristic/water_flow.hpp"
+#include "../src/heuristic/repr_permutation.hpp"
 #include "../src/model/instance.hpp"
 #include "../src/model/solution.hpp"
 
@@ -61,7 +62,7 @@ TEST_CASE("water_flow returns a valid solution with consistent statistics")
     Instance inst = make_ft03();
     std::mt19937 rng(1);
 
-    WaterFlowResult r = water_flow(inst, small_params(), rng);
+    WaterFlowResult<Solution> r = water_flow<Solution>(inst, small_params(), rng);
 
     CHECK(r.best.is_valid());
     CHECK(r.makespan == jssp::makespan_of(inst, r.best));
@@ -74,7 +75,7 @@ TEST_CASE("water_flow respects the lower bound")
     Instance inst = make_square(6, 42);
     std::mt19937 rng(2);
 
-    WaterFlowResult r = water_flow(inst, small_params(), rng);
+    WaterFlowResult<Solution> r = water_flow<Solution>(inst, small_params(), rng);
     CHECK(r.makespan >= inst.lower_bound());
 }
 
@@ -86,7 +87,7 @@ TEST_CASE("water_flow is no worse than a single random local optimum")
     Instance inst = make_square(6, 7);
 
     std::mt19937 rng_wf(3);
-    WaterFlowResult r = water_flow(inst, small_params(), rng_wf);
+    WaterFlowResult<Solution> r = water_flow<Solution>(inst, small_params(), rng_wf);
 
     std::mt19937 rng_ref(3);
     Solution rnd = Solution::random(inst, rng_ref);
@@ -99,8 +100,8 @@ TEST_CASE("water_flow is reproducible with the same seed")
 
     std::mt19937 rng_a(123);
     std::mt19937 rng_b(123);
-    WaterFlowResult ra = water_flow(inst, small_params(), rng_a);
-    WaterFlowResult rb = water_flow(inst, small_params(), rng_b);
+    WaterFlowResult<Solution> ra = water_flow<Solution>(inst, small_params(), rng_a);
+    WaterFlowResult<Solution> rb = water_flow<Solution>(inst, small_params(), rng_b);
 
     CHECK(ra.makespan == rb.makespan);
     CHECK(ra.best.sequence() == rb.best.sequence());

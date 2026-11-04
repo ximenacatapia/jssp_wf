@@ -9,6 +9,7 @@
 #include "../src/eval/cost.hpp"
 #include "../src/eval/schedule.hpp"
 #include "../src/heuristic/local_search.hpp"
+#include "../src/heuristic/repr_permutation.hpp"
 #include "../src/model/instance.hpp"
 #include "../src/model/solution.hpp"
 
