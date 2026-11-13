@@ -27,7 +27,7 @@ namespace jssp
 
     struct WaterFlowParams
     {
-        int max_clouds = 1000;    // main iterations/clouds
+        int max_clouds = 200;     // main iterations/clouds
         int rain_drops = 15;      // random solutions generated per exploration
         int erode_top = 5;        // how many best valleys to erode per cloud
         int erosion_attempts = 3; // intensification rounds before a valley is spent

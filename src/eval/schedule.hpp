@@ -33,9 +33,13 @@ namespace jssp
         // All scheduled operations, in the order they were placed
         const std::vector<ScheduledOp> &operations() const { return ops_; }
 
+        // Extracts one critical path
+        std::vector<int> critical_path() const;
+
     private:
         int makespan_ = 0;
         std::vector<ScheduledOp> ops_;
+        const Instance *inst_;
     };
 
     // decode and return only the makespan.
