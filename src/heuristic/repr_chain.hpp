@@ -4,6 +4,7 @@
 #include <random>
 
 #include "../eval/chain_cost.hpp"
+#include "../eval/eval_counter.hpp"
 #include "../model/instance.hpp"
 #include "../model/machine_chain.hpp"
 #include "representation.hpp"
@@ -34,9 +35,35 @@ namespace jssp
     {
         (void)inst;
         MachineChain neighbor = chain; // copy
-
         const int m = neighbor.num_machines();
 
+        const ChainEvaluation &ev = chain.evaluate();
+
+        // non-feasible: target an operation in a cycle
+        if (!ev.feasible && !ev.cycle_ops.empty())
+        {
+            // Pick a random operation that is stuck in a cycle.
+            std::uniform_int_distribution<int> pick_op(
+                0, static_cast<int>(ev.cycle_ops.size()) - 1);
+            int op_id = ev.cycle_ops[pick_op(rng)];
+
+            // Find it in its machine's chain and move it to a random position in
+            // that same machine (re-ordering it may break the cycle).
+            int mk = neighbor.machine_of(op_id);
+            int at = neighbor.position_in_machine(op_id);
+            const int len = static_cast<int>(neighbor.order()[mk].size());
+            if (mk >= 0 && at >= 0 && len >= 2)
+            {
+                std::uniform_int_distribution<int> pick_pos(0, len - 1);
+                int to = pick_pos(rng);
+                while (to == at)
+                    to = pick_pos(rng);
+                neighbor.swap_in_machine(mk, at, to);
+                return neighbor;
+            }
+        }
+
+        // feasible: random adjacent sawp
         std::uniform_int_distribution<int> pick_machine(0, m - 1);
         int k = pick_machine(rng);
         for (int tries = 0; tries < m; ++tries)
@@ -58,6 +85,7 @@ namespace jssp
     // Cost with non-feasibility penalty.
     inline double repr_cost(const Instance &inst, const MachineChain &chain)
     {
+        bump_eval_count();
         return chain_cost(inst, chain);
     }
 

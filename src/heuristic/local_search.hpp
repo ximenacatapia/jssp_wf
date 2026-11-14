@@ -29,17 +29,16 @@ namespace jssp
     struct LocalSearchParams
     {
         LocalSearchStrategy strategy = LocalSearchStrategy::FIRST_IMPROVEMENT;
-        int sample_size = 200; // K: neighbors sampled per step
+        int sample_size = 200;
         int max_steps = 1000;
     };
 
-    // Slides 'start' downhill to a local optimum and returns it. The returned
-    // solution's cost is never worse than that of 'start'
+    // Sampled-neighborhood local search
     template <class Repr>
-    Repr local_search(const Instance &inst,
-                      const Repr &start,
-                      const LocalSearchParams &params,
-                      std::mt19937 &rng)
+    Repr sampled_local_search(const Instance &inst,
+                              const Repr &start,
+                              const LocalSearchParams &params,
+                              std::mt19937 &rng)
     {
         Repr current = start;
         double current_cost = repr_cost(inst, current);
@@ -62,10 +61,10 @@ namespace jssp
                     best = candidate;
                     found = true;
 
-                    // Foe the first-improvemen we stop at the first better neighbor
+                    // First-improvement
                     if (params.strategy == LocalSearchStrategy::FIRST_IMPROVEMENT)
                         break;
-                    // keep scanning the sample for the best.
+                    // Steepest
                 }
             }
 
@@ -78,6 +77,23 @@ namespace jssp
 
         return current;
     }
+
+    // Generic local search
+    template <class Repr>
+    Repr local_search(const Instance &inst,
+                      const Repr &start,
+                      const LocalSearchParams &params,
+                      std::mt19937 &rng)
+    {
+        return sampled_local_search(inst, start, params, rng);
+    }
+
+    class Solution;
+    template <>
+    Solution local_search<Solution>(const Instance &inst,
+                                    const Solution &start,
+                                    const LocalSearchParams &params,
+                                    std::mt19937 &rng);
 
 } // namespace jssp
 

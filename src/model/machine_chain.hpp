@@ -21,6 +21,7 @@ namespace jssp
         int makespan = 0; // longest path if feasible, partial otherwise
         int nodes_in_cycle = 0;
         bool feasible = false;
+        std::vector<int> cycle_ops;
     };
 
     class MachineChain
@@ -42,8 +43,11 @@ namespace jssp
         // Swaps operations at positions a and b within machine k.
         void swap_in_machine(int machine, int a, int b);
 
+        int machine_of(int op_id) const;
+        int position_in_machine(int op_id) const;
+
         // Evaluation
-        ChainEvaluation evaluate() const;
+        const ChainEvaluation &evaluate() const;
 
         // Output
         std::string to_string() const;
@@ -51,6 +55,10 @@ namespace jssp
     private:
         const Instance *inst_;
         std::vector<std::vector<int>> order_; // order_[machine] = op ids in order
+
+        mutable bool valid_ = false;
+        mutable ChainEvaluation cache_;
+        void invalidate() { valid_ = false; }
 
         int op_id(int job, int pos) const { return job * inst_->num_machines() + pos; }
         int job_of(int op_id) const { return op_id / inst_->num_machines(); }

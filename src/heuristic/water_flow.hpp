@@ -2,10 +2,15 @@
 #define JSSP_WATER_FLOW_HPP
 
 #include <random>
+#include <vector>
+#include <algorithm>
+#include <iostream>
 
 #include "../model/instance.hpp"
+#include "../eval/eval_counter.hpp"
 #include "local_search.hpp"
 #include "representation.hpp"
+#include "local_search_n5.hpp"
 
 /*
 Water-Flow Algorithm (WFA) for the JSSP, adapted:
@@ -27,12 +32,18 @@ namespace jssp
 
     struct WaterFlowParams
     {
-        int max_clouds = 200;     // main iterations/clouds
-        int rain_drops = 15;      // random solutions generated per exploration
-        int erode_top = 5;        // how many best valleys to erode per cloud
-        int erosion_attempts = 3; // intensification rounds before a valley is spent
+        long long max_evals = 50000;
+        int max_clouds = 100000;    // main iterations/clouds
+        int rain_drops = 10000;     // random solutions generated per exploration
+        int erode_top = 4000;       // how many best valleys to erode per cloud
+        int erosion_attempts = 100; // intensification rounds before a valley is spent
+
+        long long stagnation_evals = 5000;
+        int kick_strength = 40;
 
         StartMode start = StartMode::NONFEASIBLE; // we start from non-feasible as defaulr
+
+        int trace_every = 0; // Progress tracing
 
         // Local search used for the gravity phase
         LocalSearchParams gravity;
@@ -42,12 +53,12 @@ namespace jssp
 
         WaterFlowParams()
         {
-            gravity.strategy = LocalSearchStrategy::FIRST_IMPROVEMENT;
-            gravity.sample_size = 200;
+            gravity.strategy = LocalSearchStrategy::STEEPEST;
+            gravity.sample_size = 50;
             gravity.max_steps = 500;
 
             erosion.strategy = LocalSearchStrategy::STEEPEST;
-            erosion.sample_size = 400;
+            erosion.sample_size = 50;
             erosion.max_steps = 500;
         }
     };
@@ -61,12 +72,23 @@ namespace jssp
         double cost;
         int iterations;
         int nodes_in_cycle; // 0 -> feasible
+        int kicks = 0;      // stagnation escapes triggered
     };
 
     template <class Repr>
     bool is_feasible(const WaterFlowResult<Repr> &r)
     {
         return r.nodes_in_cycle == 0;
+    }
+
+    template <class Repr>
+    Repr repr_perturb(const Instance &inst, const Repr &sol, int strength,
+                      std::mt19937 &rng)
+    {
+        Repr p = sol;
+        for (int s = 0; s < strength; ++s)
+            p = repr_neighbor(inst, p, rng);
+        return p;
     }
 
     // Runs the Water-Flow algorithm on representation Repr and returns the best
@@ -87,14 +109,21 @@ namespace jssp
         std::vector<Valley> uneroded; // candidates to erode
         std::vector<Valley> eroded;   // exhausted
 
+        // Fresh evaluation budget for this run.
+        reset_eval_count();
+        auto budget_left = [&]()
+        { return params.max_evals <= 0 || eval_count() < params.max_evals; };
+
         // one local optimum, from the chosen start mode.
         Repr best = local_search(
             inst, repr_random<Repr>(inst, rng, params.start), params.gravity, rng);
         double best_cost = repr_cost(inst, best);
 
         int clouds_run = 0;
+        int kicks = 0;                                  // how many escapes were triggered
+        long long evals_at_last_improve = eval_count(); // stagnation check
 
-        for (int cloud = 0; cloud < params.max_clouds; ++cloud)
+        for (int cloud = 0; cloud < params.max_clouds && budget_left(); ++cloud)
         {
             ++clouds_run;
 
@@ -110,6 +139,7 @@ namespace jssp
                 {
                     best = opt;
                     best_cost = c;
+                    evals_at_last_improve = eval_count();
                 }
             }
 
@@ -130,7 +160,7 @@ namespace jssp
                 Valley current = uneroded[v];
                 bool improved_overall = false;
 
-                for (int a = 0; a < params.erosion_attempts; ++a)
+                for (int a = 0; a < params.erosion_attempts && budget_left(); ++a)
                 {
                     Repr deeper =
                         local_search(inst, current.sol, params.erosion, rng);
@@ -144,6 +174,7 @@ namespace jssp
                         {
                             best = deeper;
                             best_cost = dc;
+                            evals_at_last_improve = eval_count();
                         }
                     }
                     else
@@ -159,6 +190,45 @@ namespace jssp
             }
 
             uneroded.swap(keep);
+
+            // Stagnation escape.
+            if (params.stagnation_evals > 0 && budget_left() &&
+                eval_count() - evals_at_last_improve >= params.stagnation_evals)
+            {
+                Repr kicked = local_search(
+                    inst, repr_perturb(inst, best, params.kick_strength, rng),
+                    params.gravity, rng);
+                double kc = repr_cost(inst, kicked);
+
+                uneroded.clear();
+                eroded.clear();
+                uneroded.push_back(Valley{kicked, kc});
+                if (kc < best_cost)
+                {
+                    best = kicked;
+                    best_cost = kc;
+                }
+
+                // Reset the stagnation window
+                evals_at_last_improve = eval_count();
+                ++kicks;
+            }
+
+            // Progress trace: one line every 'trace_every' clouds, showing how
+            // the best solution is improving and how much of the evaluation
+            // budget is spent.
+            if (params.trace_every > 0 && (cloud + 1) % params.trace_every == 0)
+            {
+                int mk = repr_makespan(inst, best);
+                int cyc = repr_nodes_in_cycle(inst, best);
+                std::cout << "  [cloud " << (cloud + 1) << ", evals "
+                          << eval_count() << "/" << params.max_evals
+                          << ", kicks " << kicks << "] best makespan=" << mk
+                          << " cost=" << best_cost
+                          << (cyc == 0 ? " (feasible)" : " (INFEASIBLE)")
+                          << "\n";
+                std::cout.flush();
+            }
         }
 
         WaterFlowResult<Repr> result{best, repr_makespan(inst, best), best_cost,

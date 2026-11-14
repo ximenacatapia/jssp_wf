@@ -4,6 +4,7 @@
 #include <random>
 
 #include "../eval/cost.hpp"
+#include "../eval/eval_counter.hpp"
 #include "../eval/schedule.hpp"
 #include "../model/instance.hpp"
 #include "../model/solution.hpp"
@@ -36,6 +37,7 @@ namespace jssp
 
     inline double repr_cost(const Instance &inst, const Solution &sol)
     {
+        bump_eval_count();
         return cost(inst, sol);
     }
 
