@@ -95,6 +95,14 @@ namespace jssp
                                     const LocalSearchParams &params,
                                     std::mt19937 &rng);
 
+    // Declaration of the MachineChain specialization
+    class MachineChain; // fwd decl
+    template <>
+    MachineChain local_search<MachineChain>(const Instance &inst,
+                                            const MachineChain &start,
+                                            const LocalSearchParams &params,
+                                            std::mt19937 &rng);
+
 } // namespace jssp
 
 #endif // JSSP_LOCAL_SEARCH_HPP

@@ -22,6 +22,7 @@ namespace jssp
         int nodes_in_cycle = 0;
         bool feasible = false;
         std::vector<int> cycle_ops;
+        std::vector<int> topo_order;
     };
 
     class MachineChain
@@ -33,6 +34,12 @@ namespace jssp
 
         MachineChain(const Instance &inst, std::vector<std::vector<int>> order);
 
+        // Builds a chain from a permutation's job sequence (each job id appears m
+        // times; the k-th occurrence is operation (job,k)). Always feasible. This
+        // is the reverse of to_sequence(): it brings an N5-improved permutation
+        // back into the chain representation.
+        static MachineChain from_sequence(const Instance &inst,
+                                          const std::vector<int> &seq);
         // Access
         const std::vector<std::vector<int>> &order() const { return order_; }
         int num_machines() const { return static_cast<int>(order_.size()); }
@@ -51,6 +58,9 @@ namespace jssp
 
         // Output
         std::string to_string() const;
+
+        // bridge to the permutation representation
+        std::vector<int> to_sequence() const;
 
     private:
         const Instance *inst_;

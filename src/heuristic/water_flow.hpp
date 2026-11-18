@@ -11,7 +11,7 @@
 #include "local_search.hpp"
 #include "representation.hpp"
 #include "local_search_n5.hpp"
-
+#include "local_search_chain.hpp"
 /*
 Water-Flow Algorithm (WFA) for the JSSP, adapted:
 
@@ -33,29 +33,29 @@ namespace jssp
     struct WaterFlowParams
     {
         long long max_evals = 50000;
-        int max_clouds = 100000;    // main iterations/clouds
-        int rain_drops = 10000;     // random solutions generated per exploration
-        int erode_top = 4000;       // how many best valleys to erode per cloud
-        int erosion_attempts = 100; // intensification rounds before a valley is spent
+
+        int max_clouds = 100000;  // safety bound on clouds (budget stops first)
+        int rain_drops = 15;      // random solutions generated per exploration
+        int erode_top = 5;        // how many best valleys to erode per cloud
+        int erosion_attempts = 3; // intensification rounds before a valley is spent
 
         long long stagnation_evals = 5000;
         int kick_strength = 40;
 
-        StartMode start = StartMode::NONFEASIBLE; // we start from non-feasible as defaulr
+        StartMode start = StartMode::NONFEASIBLE; // as default start from nonfeasible
 
-        int trace_every = 0; // Progress tracing
+        // Progress tracing
 
-        // Local search used for the gravity phase
-        LocalSearchParams gravity;
+        int trace_every = 0;
 
-        // Local search used for the erosion phase
-        LocalSearchParams erosion;
+        LocalSearchParams gravity; // local search for the gravity phase
+        LocalSearchParams erosion; // local search for the erosion phase
 
         WaterFlowParams()
         {
             gravity.strategy = LocalSearchStrategy::STEEPEST;
             gravity.sample_size = 50;
-            gravity.max_steps = 500;
+            gravity.max_steps = 5000;
 
             erosion.strategy = LocalSearchStrategy::STEEPEST;
             erosion.sample_size = 50;
@@ -63,7 +63,7 @@ namespace jssp
         }
     };
 
-    // Result holding the best solution plus metrics.
+    // Result holding the best solution (of representation Repr) plus metrics.
     template <class Repr>
     struct WaterFlowResult
     {
@@ -71,7 +71,7 @@ namespace jssp
         int makespan;
         double cost;
         int iterations;
-        int nodes_in_cycle; // 0 -> feasible
+        int nodes_in_cycle; // 0 ->feasible
         int kicks = 0;      // stagnation escapes triggered
     };
 
@@ -114,21 +114,21 @@ namespace jssp
         auto budget_left = [&]()
         { return params.max_evals <= 0 || eval_count() < params.max_evals; };
 
-        // one local optimum, from the chosen start mode.
+        // best (P0): one local optimum, from the chosen start mode.
         Repr best = local_search(
             inst, repr_random<Repr>(inst, rng, params.start), params.gravity, rng);
         double best_cost = repr_cost(inst, best);
 
         int clouds_run = 0;
         int kicks = 0;                                  // how many escapes were triggered
-        long long evals_at_last_improve = eval_count(); // stagnation check
+        long long evals_at_last_improve = eval_count(); // for stagnation check
 
         for (int cloud = 0; cloud < params.max_clouds && budget_left(); ++cloud)
         {
             ++clouds_run;
 
-            // Exploration phase: rain and gravity.
-            for (int d = 0; d < params.rain_drops; ++d)
+            // Exploration: rain + gravity.
+            for (int d = 0; d < params.rain_drops && budget_left(); ++d)
             {
                 Repr drop = repr_random<Repr>(inst, rng, params.start);
                 Repr opt = local_search(inst, drop, params.gravity, rng);
@@ -143,7 +143,7 @@ namespace jssp
                 }
             }
 
-            // Exploitation phase: erosion of the most promising valleys.
+            // Exploitation: erosion of the most promising valleys.
             std::sort(uneroded.begin(), uneroded.end(), cheaper);
             const int to_erode =
                 std::min<int>(params.erode_top, static_cast<int>(uneroded.size()));
@@ -151,7 +151,7 @@ namespace jssp
             std::vector<Valley> keep;
             for (int v = 0; v < static_cast<int>(uneroded.size()); ++v)
             {
-                if (v >= to_erode)
+                if (v >= to_erode || !budget_left())
                 {
                     keep.push_back(uneroded[v]);
                     continue;
@@ -191,7 +191,9 @@ namespace jssp
 
             uneroded.swap(keep);
 
-            // Stagnation escape.
+            // Stagnation escape ("kick"). If the global best has not improved
+            // for 'stagnation_evals' evaluations, the search has converged to a
+            // spot it keeps rediscovering so we divert it
             if (params.stagnation_evals > 0 && budget_left() &&
                 eval_count() - evals_at_last_improve >= params.stagnation_evals)
             {
@@ -209,14 +211,12 @@ namespace jssp
                     best_cost = kc;
                 }
 
-                // Reset the stagnation window
+                // Reset the stagnation window: give the diverted search room to
+                // work before the next kick, whether or not it beat the best.
                 evals_at_last_improve = eval_count();
                 ++kicks;
             }
 
-            // Progress trace: one line every 'trace_every' clouds, showing how
-            // the best solution is improving and how much of the evaluation
-            // budget is spent.
             if (params.trace_every > 0 && (cloud + 1) % params.trace_every == 0)
             {
                 int mk = repr_makespan(inst, best);
@@ -225,16 +225,21 @@ namespace jssp
                           << eval_count() << "/" << params.max_evals
                           << ", kicks " << kicks << "] best makespan=" << mk
                           << " cost=" << best_cost
-                          << (cyc == 0 ? " (feasible)" : " (INFEASIBLE)")
+                          << (cyc == 0 ? " (feasible)" : " (NONFEASIBLE)")
                           << "\n";
                 std::cout.flush();
             }
         }
 
-        WaterFlowResult<Repr> result{best, repr_makespan(inst, best), best_cost,
-                                     clouds_run, repr_nodes_in_cycle(inst, best)};
+        WaterFlowResult<Repr> result{best,
+                                     repr_makespan(inst, best),
+                                     best_cost,
+                                     clouds_run,
+                                     repr_nodes_in_cycle(inst, best),
+                                     kicks};
         return result;
     }
+
 } // namespace jssp
 
 #endif // JSSP_WATER_FLOW_HPP
